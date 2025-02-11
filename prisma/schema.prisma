@@ -4,10 +4,6 @@
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
-<<<<<<< HEAD
-=======
-
->>>>>>> cdca7e81af1dc47009fecd46a056a1279d432be2
 generator client {
   provider = "prisma-client-js"
 }
@@ -18,13 +14,6 @@ datasource db {
   directUrl=env("DIRECT_URL")
 }
 
-<<<<<<< HEAD
-model User {
-  id      Int      @id @default(autoincrement())
-  name    String
- 
-}
-=======
 
 model User {
   id              String   @id @default(uuid()) // Unique ID
@@ -40,4 +29,3 @@ model User {
   updatedAt       DateTime @updatedAt 
 }
 
->>>>>>> cdca7e81af1dc47009fecd46a056a1279d432be2
