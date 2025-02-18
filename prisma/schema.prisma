@@ -16,16 +16,18 @@ datasource db {
 
 
 model User {
-  id              String   @id @default(uuid()) // Unique ID
-  name            String
-  email           String   @unique
-  password        String
-  dob             DateTime
-  gender          String
-  gamePreferences String[] 
-  profilePhoto    String?  
-  city       String   
-  createdAt       DateTime @default(now()) 
-  updatedAt       DateTime @updatedAt 
+  id                    String   @id @default(cuid())
+  name                  String
+  email                 String   @unique
+  password              String
+  dob                   DateTime?
+  gender                String?
+  city                  String?
+  gamePreferences       String?
+  profilePhoto          String?
+  resetToken            String?   @unique
+  resetTokenExpiration  DateTime? 
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }
 

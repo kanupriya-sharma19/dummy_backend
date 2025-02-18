@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
-import userRoute from "./routes/user.route";
+import userRoute from "./routes/user.route.js";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();

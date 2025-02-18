@@ -111,9 +111,11 @@
 // }
 {
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "outDir": "./dist",
+    "module": "ESNext",  // or "CommonJS" depending on your project setup
+    "moduleResolution": "node",  // this works well with Node.js and packages like Prisma
     "esModuleInterop": true,
-    "strict": true
+    "strict": true,
+    "target": "ES6"  // or "ESNext" for latest features
   }
 }
