@@ -9,13 +9,79 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl=env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+  TURFOWNER
 }
 
 model User {
-  id      Int      @id @default(autoincrement())
-  name    String
- 
+  id                   String    @id @default(cuid())
+  name                 String
+  email                String    @unique
+  password             String
+  phoneNumber          String
+  dob                  DateTime?
+  gender               String?
+  city                 String?
+  gamePreferences      String?
+  profilePhoto         String?
+  resetToken           String?   @unique
+  resetTokenExpiration DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  role                 Role
+  bookings             Booking[]
+}
+
+model TurfOwner {
+  id           String  @id @default(cuid())
+  name         String
+  email        String  @unique
+  password     String
+  profilePhoto String?
+  phoneNumber  String
+
+  turfPhoto         String[]
+  turfName          String
+  turfDescription   String
+  turfLocation      String
+  turfSize          String
+  turfGames         String[] //(cricket,football,etc)
+  amenities         String[]
+  ratings           Float    @default(0.0)
+  pricePerPerson    Float
+  totalSeats        Int
+  availableSeats    Int
+  available         Boolean  @default(true)
+  availabilitySlots Json //example { "day": "Monday", "time": ["6:00 PM - 8:00 PM", "10:00 PM - 12:00 AM"] },
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  bookings  Booking[]
+}
+
+enum Status {
+  PENDING
+  CONFIRMED
+  COMPLETED
+}
+
+model Booking {
+  id            String    @id @default(cuid())
+  turfId        String
+  userId        String
+  numberOfSeats Int
+  bookedFrom    DateTime
+  bookedTo      DateTime
+  status        Status    @default(PENDING)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  turf          TurfOwner @relation(fields: [turfId], references: [id]) // Relation to Turf
+  user          User      @relation(fields: [userId], references: [id]) // Relation to User
 }
