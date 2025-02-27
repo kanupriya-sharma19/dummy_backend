@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "TurfOwner" ALTER COLUMN "turfDescription" DROP NOT NULL,
+ALTER COLUMN "turfSize" DROP NOT NULL,
+ALTER COLUMN "pricePerPerson" DROP NOT NULL,
+ALTER COLUMN "totalSeats" DROP NOT NULL,
+ALTER COLUMN "availableSeats" DROP NOT NULL,
+ALTER COLUMN "availabilitySlots" DROP NOT NULL;

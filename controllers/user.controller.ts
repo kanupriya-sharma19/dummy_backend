@@ -29,7 +29,7 @@ export const signupUser = async (
   next: NextFunction,
 ): Promise<any> => {
   try {
-    const { name, email, password, dob, gender, city, gamePreferences } =
+    const { name, email, password, dob, gender, city } =
       req.body;
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser)
@@ -38,6 +38,16 @@ export const signupUser = async (
         .json({ status: false, message: "User already exists" });
     const profilePhoto = req.file ? (req.file as any).path : null;
     const hashedPassword = await bcrypt.hash(password, 10);
+    let gamePreferences;
+    try {
+      gamePreferences = req.body.gamePreferences
+        ? JSON.parse(req.body.gamePreferences)
+        : [];
+    } catch {
+      gamePreferences = [];
+    }
+
+    gamePreferences = Array.isArray(gamePreferences) ? gamePreferences : [gamePreferences];
     const user = await prisma.user.create({
       data: {
         name,
@@ -46,7 +56,7 @@ export const signupUser = async (
         dob: dob ? new Date(dob) : null,
         gender,
         city,
-        gamePreferences,
+  
         profilePhoto,
       } as Prisma.UserUncheckedCreateInput,
     });
@@ -84,7 +94,7 @@ export async function loginUser(
       return res
         .status(401)
         .json({ status: false, message: "Invalid credentials" });
-
+   
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
       return res
@@ -113,8 +123,22 @@ export async function loginUser(
 
 export async function updateProfile(req: Request, res: Response) {
   try {
-    const { dob, gender, city, gamePreferences } = req.body;
-    const profilePhoto = req.file ? (req.file as any).path : null;
+    const { dob, gender, city } = req.body;
+    let gamePreferences = [];
+
+    try {
+      gamePreferences = req.body.gamePreferences
+        ? JSON.parse(req.body.gamePreferences)
+        : [];
+    } catch {
+      gamePreferences = [];
+    }
+
+    if (!req.files || !(req.files as any)["profilePhoto"]) {
+      return res.status(400).json({ status: false, message: "No profile photo uploaded" });
+    }
+
+    const profilePhoto = (req.files as any)["profilePhoto"][0].path; // Extract Cloudinary URL
 
     const updatedUser = await prisma.user.update({
       where: { id: req.user },
@@ -122,7 +146,7 @@ export async function updateProfile(req: Request, res: Response) {
         dob: dob ? new Date(dob) : undefined,
         gender,
         city,
-        gamePreferences: gamePreferences || undefined,
+        gamePreferences,
         profilePhoto,
       },
     });
@@ -133,12 +157,10 @@ export async function updateProfile(req: Request, res: Response) {
       data: updatedUser,
     });
   } catch (error: any) {
-    console.error("Error updating profile:", error);
-    res
-      .status(500)
-      .json({ status: false, message: error.message || "Server error" });
+    res.status(500).json({ status: false, message: error.message || "Server error" });
   }
 }
+
 
 export async function generateResetLink(
   req: Request,
@@ -182,15 +204,11 @@ export async function generateResetLink(
 export async function resetPassword(req: Request, res: Response): Promise<any> {
   const { token, newPassword } = req.body;
 
-  // Debug log for received token
-  console.log("Received token:", token);
 
-  // Find user by reset token
   const user = await prisma.user.findUnique({
     where: { resetToken: token },
   });
 
-  // Log user data to see what is returned
   console.log("User found:", user);
 
   if (!user) {
@@ -199,7 +217,6 @@ export async function resetPassword(req: Request, res: Response): Promise<any> {
       .json({ status: false, message: "Invalid or expired token" });
   }
 
-  // Check if token has expired
   const isTokenExpired =
     user.resetTokenExpiration && user.resetTokenExpiration < new Date();
   if (isTokenExpired) {
@@ -208,10 +225,7 @@ export async function resetPassword(req: Request, res: Response): Promise<any> {
       .json({ status: false, message: "Token has expired" });
   }
 
-  // Hash the new password
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-  // Update the password and clear the reset token fields
   await prisma.user.update({
     where: { resetToken: token },
     data: {
@@ -243,33 +257,38 @@ export async function logoutUser(req: Request, res: Response) {
   }
 }
 
-export async function changePassword(
-  req: Request,
-  res: Response,
-): Promise<any> {
+
+export async function changePassword(req: Request, res: Response): Promise<any> {
   try {
+
+    if (!req.user) {
+      return res.status(401).json({ status: false, message: "Unauthorized: No user ID found" });
+    }
+
     const { oldPassword, newPassword } = req.body;
-    const userId = req.user.id;
+    const userId = req.user as string; 
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
+
     if (!user) {
       return res.status(404).json({ status: false, message: "User not found" });
     }
+
     const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
     if (!isOldPasswordValid) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Incorrect old password" });
+      return res.status(400).json({ status: false, message: "Incorrect old password" });
     }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
     });
-    return res
-      .status(200)
-      .json({ status: true, message: "Password changed successfully" });
+
+    return res.status(200).json({ status: true, message: "Password changed successfully" });
+
   } catch (err: any) {
-    console.error("Error changing password ", err);
+    console.error("Error changing password:", err);
     res.status(500).json({
       status: false,
       message: "Internal Server Error",

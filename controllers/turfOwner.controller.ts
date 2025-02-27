@@ -32,6 +32,7 @@ export async function signupTurfOwner(
         phoneNumber,
         turfName,
         turfLocation,
+      
       } as Prisma.TurfOwnerCreateInput,
     });
 
@@ -63,39 +64,74 @@ export async function signupTurfOwner(
     });
   }
 }
-
 export async function updateDetails(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> {
   try {
+    
+
     const turfOwnerId = req.turfOwner;
-    const profilePhoto = req.file ? (req.file as any).path : null;
-    const turfPhotos = req.files
-      ? (req.files as Express.Multer.File[]).map((file) => file.path)
-      : req.file
-        ? [(req.file as Express.Multer.File).path]
+
+    const profilePhoto =
+      req.files && "profilePhoto" in req.files
+        ? (req.files["profilePhoto"] as Express.Multer.File[])[0].path
+        : null;
+
+    const turfPhotos =
+      req.files && "turfPhoto" in req.files
+        ? (req.files["turfPhoto"] as Express.Multer.File[]).map(
+            (file) => file.path
+          )
         : [];
+
     const {
       turfDescription,
       turfSize,
-      turfGames,
-      amenities,
       pricePerPerson,
       totalSeats,
       available,
       availabilitySlots,
     } = req.body;
+
+    let turfGames;
+    try {
+      turfGames = req.body.turfGames
+        ? JSON.parse(req.body.turfGames)
+        : [];
+    } catch {
+      turfGames = [];
+    }
+
+    let amenities;
+    try {
+      amenities = req.body.amenities
+        ? JSON.parse(req.body.amenities)
+        : [];
+    } catch {
+      amenities = [];
+    }
+
+    turfGames = Array.isArray(turfGames) ? turfGames : [turfGames];
+    amenities = Array.isArray(amenities) ? amenities : [amenities];
+   
+
+    const parsedPricePerPerson =
+      pricePerPerson !== undefined ? parseFloat(pricePerPerson) : undefined;
+
+    const parsedTotalSeats =
+      totalSeats !== undefined ? parseInt(totalSeats, 10) : undefined;
+
     const updatedTurfOwner = await prisma.turfOwner.update({
       where: { id: turfOwnerId },
       data: {
         profilePhoto,
         turfDescription,
         turfSize,
-        turfGames: turfGames ? (turfGames as string[]) : [],
-        amenities: amenities ? (amenities as string[]) : [],
-        pricePerPerson,
-        totalSeats,
+        turfGames,
+        amenities,
+        pricePerPerson: parsedPricePerPerson,
+        totalSeats: parsedTotalSeats,
         available,
         availabilitySlots: availabilitySlots
           ? (availabilitySlots as Prisma.JsonObject)
@@ -103,6 +139,7 @@ export async function updateDetails(
         turfPhoto: turfPhotos.length ? turfPhotos : undefined,
       },
     });
+
     res.status(201).json({
       status: true,
       message: "Turf Owner updated successfully",
@@ -117,6 +154,8 @@ export async function updateDetails(
     });
   }
 }
+
+
 
 export async function loginTurfOwner(
   req: Request,
@@ -160,5 +199,22 @@ export async function loginTurfOwner(
       message: "Internal Server Error",
       error: err.message,
     });
+  }
+}
+
+export async function logoutTurfOwner(req: Request, res: Response) {
+  try {
+    const isLocal = process.env.NODE_ENV !== "production";
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: !isLocal,
+      sameSite: "strict",
+    });
+
+    res.status(200).json({ status: true, message: "Logout successful" });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ status: false, message: error.message || "Server error" });
   }
 }
