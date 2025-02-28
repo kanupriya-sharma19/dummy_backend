@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import jwt from "jsonwebtoken";
 import nodemailer from "nodemailer";
 import crypto from "crypto";
+import { stat } from "fs";
 
 const prisma = new PrismaClient();
 
@@ -270,6 +271,58 @@ export async function changePassword(
       .json({ status: true, message: "Password changed successfully" });
   } catch (err: any) {
     console.error("Error changing password ", err);
+    res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: err.message,
+    });
+  }
+}
+
+export async function bookTurf(req: Request, res: Response): Promise<any> {
+  try {
+    const userId = req.user.id;
+    const { turfId, numberOfSeats, bookedFrom, bookedTo } = req.body;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+    const turf = await prisma.turfOwner.findUnique({ where: { id: turfId } });
+    if (!turf) {
+      return res.status(404).json({ status: false, message: "Turf not found" });
+    }
+
+    if (turf.availableSeats < numberOfSeats) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Not enough seats available" });
+    }
+
+    const booking = await prisma.booking.create({
+      data: {
+        userId,
+        turfId,
+        numberOfSeats,
+        bookedFrom: new Date(bookedFrom),
+        bookedTo: new Date(bookedTo),
+        status: "PENDING",
+      },
+    });
+
+    await prisma.turfOwner.update({
+      where: { id: turfId },
+      data: { availableSeats: turf.availableSeats - numberOfSeats },
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: "Turf booked successfully",
+      data: booking,
+    });
+  } catch (err: any) {
+    console.error("Error booking turf ", err);
     res.status(500).json({
       status: false,
       message: "Internal Server Error",

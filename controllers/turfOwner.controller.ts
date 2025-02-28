@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, TurfOwnerType } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
@@ -11,8 +11,28 @@ export async function signupTurfOwner(
   res: Response,
 ): Promise<void> {
   try {
-    const { name, email, password, phoneNumber, turfName, turfLocation } =
-      req.body;
+    const {
+      name,
+      email,
+      password,
+      phoneNumber,
+      turfName,
+      turfLocation,
+      ownerType,
+      organizationName,
+      registrationNumber,
+      contactPersonName,
+      contactPersonPhone,
+    } = req.body;
+
+    if (!Object.values(TurfOwnerType).includes(ownerType)) {
+      res.status(400).json({
+        status: false,
+        message:
+          "Invalid owner type. Must be either 'INDIVIDUAL' or 'ORGANIZATION'.",
+      });
+      return;
+    }
     const existingTurfOwner = await prisma.turfOwner.findUnique({
       where: { email },
     });
@@ -26,12 +46,21 @@ export async function signupTurfOwner(
     const hashedPassword = await bcrypt.hash(password, 10);
     const turfOwner = await prisma.turfOwner.create({
       data: {
-        name,
+        name: ownerType === "INDIVIDUAL" ? name : null,
         email,
         password: hashedPassword,
         phoneNumber,
         turfName,
         turfLocation,
+        ownerType,
+        organizationName:
+          ownerType === "ORGANIZATION" ? organizationName : null,
+        registrationNumber:
+          ownerType === "ORGANIZATION" ? registrationNumber : null,
+        contactPersonName:
+          ownerType === "ORGANIZATION" ? contactPersonName : null,
+        contactPersonPhone:
+          ownerType === "ORGANIZATION" ? contactPersonPhone : null,
       } as Prisma.TurfOwnerCreateInput,
     });
 
@@ -160,5 +189,21 @@ export async function loginTurfOwner(
       message: "Internal Server Error",
       error: err.message,
     });
+  }
+}
+export async function logoutTurfOwner(req: Request, res: Response) {
+  try {
+    const isLocal = process.env.NODE_ENV !== "production";
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: !isLocal,
+      sameSite: "strict",
+    });
+
+    res.status(200).json({ status: true, message: "Logout successful" });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ status: false, message: error.message || "Server error" });
   }
 }

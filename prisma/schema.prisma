@@ -21,9 +21,9 @@ enum Role {
 }
 
 model User {
-  id                   String    @id @default(cuid())
+  id                   String      @id @default(cuid())
   name                 String
-  email                String    @unique
+  email                String      @unique
   password             String
   phoneNumber          String
   dob                  DateTime?
@@ -31,12 +31,18 @@ model User {
   city                 String?
   gamePreferences      String?
   profilePhoto         String?
-  resetToken           String?   @unique
+  resetToken           String?     @unique
   resetTokenExpiration DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
   role                 Role
   bookings             Booking[]
+  TurfOwner            TurfOwner[]
+}
+
+enum TurfOwnerType {
+  INDIVIDUAL
+  ORGANIZATION
 }
 
 model TurfOwner {
@@ -61,9 +67,17 @@ model TurfOwner {
   available         Boolean  @default(true)
   availabilitySlots Json //example { "day": "Monday", "time": ["6:00 PM - 8:00 PM", "10:00 PM - 12:00 AM"] },
 
+  ownerType          TurfOwnerType
+  organizationName   String? // Required if ownerType = ORGANIZATION
+  registrationNumber String? // Required if ownerType = ORGANIZATION
+  contactPersonName  String? // Required if ownerType = ORGANIZATION
+  contactPersonPhone String? // Required if ownerType = ORGANIZATION
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
+  User      User?     @relation(fields: [userId], references: [id])
+  userId    String?
 }
 
 enum Status {

@@ -8,6 +8,7 @@ import {
   logoutUser,
   resetPassword,
   generateResetLink,
+  bookTurf,
 } from "../controllers/user.controller";
 import upload from "../middlewares/multer";
 import { authenticateUser } from "../middlewares/jwt";
@@ -26,5 +27,7 @@ userRoute.put(
 userRoute.post("/reset-password", resetPassword);
 userRoute.post("/resetLink", generateResetLink);
 userRoute.post("/logout", logoutUser);
+
+userRoute.post("/bookTurf", authenticateUser, bookTurf);
 
 export default userRoute;

@@ -5,6 +5,7 @@ import {
   signupTurfOwner,
   updateDetails,
   loginTurfOwner,
+  logoutTurfOwner,
 } from "../controllers/turfOwner.controller";
 
 const turfOwnerRoute = Router();
@@ -20,5 +21,6 @@ turfOwnerRoute.put(
   updateDetails,
 );
 turfOwnerRoute.post("/login", loginTurfOwner);
+turfOwnerRoute.post("/logout", logoutTurfOwner);
 
 export default turfOwnerRoute;
