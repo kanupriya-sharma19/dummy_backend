@@ -91,6 +91,7 @@ model Booking {
   turfId        String
   userId        String
   numberOfSeats Int
+  day           String
   bookedFrom    DateTime
   bookedTo      DateTime
   status        Status    @default(PENDING)

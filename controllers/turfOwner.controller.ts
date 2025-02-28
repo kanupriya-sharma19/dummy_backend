@@ -3,8 +3,21 @@ import { PrismaClient } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { z } from "zod";
 
 const prisma = new PrismaClient();
+
+const availabilitySchema = z.array(
+  z.object({
+    day: z.string(),
+    slots: z.array(
+      z.object({
+        start: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)"),
+        end: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)"),
+      }),
+    ),
+  }),
+);
 
 export async function signupTurfOwner(
   req: Request,
@@ -114,6 +127,7 @@ export async function updateDetails(
       available,
       availabilitySlots,
     } = req.body;
+    const parsedAvailability = availabilitySchema.parse(availabilitySlots);
     let turfGames;
     try {
       turfGames = req.body.turfGames ? JSON.parse(req.body.turfGames) : [];
@@ -143,9 +157,7 @@ export async function updateDetails(
         pricePerPerson: parsedPricePerPerson,
         totalSeats: parsedTotalSeats,
         available,
-        availabilitySlots: availabilitySlots
-          ? (availabilitySlots as Prisma.JsonObject)
-          : {},
+        availabilitySlots: parsedAvailability ? parsedAvailability : [],
         turfPhoto: turfPhotos.length ? turfPhotos : undefined,
       },
     });
