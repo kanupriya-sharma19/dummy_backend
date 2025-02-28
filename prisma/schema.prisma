@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,35 +8,24 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum Role {
-  ADMIN
-  USER
-  TURFOWNER
-}
-
 model User {
-  id                   String      @id @default(cuid())
+  id                   String    @id @default(cuid())
   name                 String
-  email                String      @unique
+  email                String    @unique
   password             String
-  phoneNumber          String
   dob                  DateTime?
   gender               String?
   city                 String?
-  gamePreferences      String?
+  gamePreferences      String[]
   profilePhoto         String?
-  resetToken           String?     @unique
+  resetToken           String?   @unique
   resetTokenExpiration DateTime?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
-  role                 Role
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  phoneNumber          String    @default("N/A")
+  role                 Role      @default(USER)
   bookings             Booking[]
-  TurfOwner            TurfOwner[]
-}
-
-enum TurfOwnerType {
-  INDIVIDUAL
-  ORGANIZATION
+  reviews              Review[]  @relation("UserReviews")
 }
 
 model TurfOwner {
@@ -53,31 +36,48 @@ model TurfOwner {
   profilePhoto String?
   phoneNumber  String
 
-  turfPhoto         String[]
-  turfName          String
-  turfDescription   String
-  turfLocation      String
-  turfSize          String
-  turfGames         String[] //(cricket,football,etc)
-  amenities         String[]
-  ratings           Float    @default(0.0)
-  pricePerPerson    Float
-  totalSeats        Int
-  availableSeats    Int
-  available         Boolean  @default(true)
-  availabilitySlots Json //example { "day": "Monday", "time": ["6:00 PM - 8:00 PM", "10:00 PM - 12:00 AM"] },
+  turfPhoto       String[]
+  turfName        String
+  turfDescription String?
+  turfLocation    String
+  turfSize        String?
+  turfGames       String[]
+  amenities       String[]
+  ratings         Float    @default(0.0)
+  pricePerPerson  Float?
+
+  totalSeats        Int?
+  availableSeats    Int     @default(0)
+  available         Boolean @default(true)
+  availabilitySlots Json?
 
   ownerType          TurfOwnerType
   organizationName   String? // Required if ownerType = ORGANIZATION
   registrationNumber String? // Required if ownerType = ORGANIZATION
   contactPersonName  String? // Required if ownerType = ORGANIZATION
   contactPersonPhone String? // Required if ownerType = ORGANIZATION
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  bookings           Booking[]
+  reviews            Review[]      @relation("TurfReviews")
+}
 
+enum TurfOwnerType {
+  INDIVIDUAL
+  ORGANIZATION
+}
+
+model Review {
+  id        String    @id @default(cuid())
+  user      User      @relation(name: "UserReviews", fields: [userId], references: [id])
+  userId    String
+  turf      TurfOwner @relation(name: "TurfReviews", fields: [turfId], references: [id])
+  turfId    String
+  rating    Float     @default(0.0)
+  comment   String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
-  User      User?     @relation(fields: [userId], references: [id])
-  userId    String?
 }
 
 enum Status {
@@ -96,6 +96,14 @@ model Booking {
   status        Status    @default(PENDING)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  turf          TurfOwner @relation(fields: [turfId], references: [id]) // Relation to Turf
-  user          User      @relation(fields: [userId], references: [id]) // Relation to User
+  turf          TurfOwner @relation(fields: [turfId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
+  Review        Review?   @relation(fields: [reviewId], references: [id])
+  reviewId      String?
+}
+
+enum Role {
+  ADMIN
+  USER
+  TURFOWNER
 }

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import upload from "../middlewares/multer";
+import uploadFields from "../middlewares/multer";
 import { authenticateTurfOwner } from "../middlewares/jwt";
 import {
   signupTurfOwner,
@@ -14,11 +14,8 @@ turfOwnerRoute.post("/signup", signupTurfOwner);
 turfOwnerRoute.put(
   "/updateDetails",
   authenticateTurfOwner,
-  upload.fields([
-    { name: "profilePhoto", maxCount: 1 },
-    { name: "turfPhotos", maxCount: 5 },
-  ]),
-  updateDetails,
+  uploadFields,
+  updateDetails
 );
 turfOwnerRoute.post("/login", loginTurfOwner);
 turfOwnerRoute.post("/logout", logoutTurfOwner);
