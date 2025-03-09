@@ -413,3 +413,55 @@ export async function bookTurf(req: Request, res: Response): Promise<any> {
     });
   }
 }
+
+
+
+export const bookRental = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { amenityId, bookedFrom, bookedTo, quantity } = req.body;
+
+    if (!req.user?.id) {
+      res.status(401).json({ error: "User authentication required." });
+      return;
+    }
+
+    const fromDate = new Date(bookedFrom);
+    const toDate = new Date(bookedTo);
+
+    if (fromDate >= toDate) {
+      res.status(400).json({ error: "Invalid booking dates." });
+      return;
+    }
+
+    const amenity = await prisma.sportsAmenity.findUnique({ where: { id: amenityId } });
+
+    if (!amenity) {
+      res.status(404).json({ error: "Amenity not found." });
+      return;
+    }
+
+    if (quantity > amenity.quantity) {
+      res.status(400).json({ error: "Not enough quantity available." });
+      return;
+    }
+
+    const hours = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60);
+    const totalPrice = hours * amenity.pricePerHour * quantity;
+
+    const newBooking = await prisma.sportsAmenityBooking.create({
+      data: {
+        userId: req.user.id,
+        amenityId,
+        bookedFrom: fromDate,
+        bookedTo: toDate,
+        quantity,
+        totalPrice,
+        status: "PENDING",
+      },
+    });
+
+    res.status(201).json(newBooking);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to book rental", details: error });
+  }
+};

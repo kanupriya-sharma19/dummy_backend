@@ -41,6 +41,7 @@ const uploadSingle = upload.single("profilePhoto");
 const uploadFields = upload.fields([
   { name: "profilePhoto", maxCount: 1 },
   { name: "turfPhoto", maxCount: 5 },
+  {name: "photos", maxCount: 5 }
 ]);
 
 export { uploadSingle, uploadFields };

@@ -9,9 +9,8 @@ export const createReview = async (
 ): Promise<any> => {
   try {
     const { turfId, rating, comment } = req.body;
-    const userId = req.user;
-    console.log("Request Body:", req.body);
-    console.log("Request Body:", req.user);
+    const userId = req.user.id;
+
 
     if (!userId || !turfId || !rating) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -48,7 +47,7 @@ export const getTurfReviews = async (req: Request, res: Response) => {
 };
 
 export const getUserReviews = async (req: Request, res: Response) => {
-  const userId = (req as any).user.id;
+  const userId = req.user.id;
 
   try {
     const reviews = await prisma.review.findMany({
@@ -68,7 +67,7 @@ export const updateReview = async (
 ): Promise<any> => {
   const { id } = req.params;
   const { rating, comment } = req.body;
-  const userId = req.user;
+  const userId = req.user.id;
 
   try {
     const review = await prisma.review.findUnique({ where: { id } });
@@ -94,7 +93,7 @@ export const deleteReview = async (
   res: Response,
 ): Promise<any> => {
   const { id } = req.params;
-  const userId = req.user;
+  const userId = req.user.id;
 
   try {
     const review = await prisma.review.findUnique({ where: { id } });

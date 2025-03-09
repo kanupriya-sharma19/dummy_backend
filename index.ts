@@ -6,6 +6,7 @@ import turfOwnerRoute from "./routes/turfOwner.route.js";
 import reviewRouter from "./routes/reviews.route.js"
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
+import rentalRoute from "./routes/rental.route.js"
 const prisma = new PrismaClient();
 
 dotenv.config();
@@ -26,6 +27,7 @@ app.use(
 app.use("/user", userRoute);
 app.use("/turf", turfOwnerRoute);
 app.use("/review", reviewRouter);
+app.use("/rentals", rentalRoute);
 
 
 app.get("*", (req: Request, res: Response) => {

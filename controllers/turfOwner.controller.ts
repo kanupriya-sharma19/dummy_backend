@@ -24,6 +24,7 @@ export async function signupTurfOwner(
   res: Response,
 ): Promise<void> {
   try {
+    
     const {
       name,
       email,
@@ -37,7 +38,7 @@ export async function signupTurfOwner(
       contactPersonName,
       contactPersonPhone,
     } = req.body;
-
+  
     if (!Object.values(TurfOwnerType).includes(ownerType)) {
       res.status(400).json({
         status: false,
@@ -65,7 +66,7 @@ export async function signupTurfOwner(
         phoneNumber,
         turfName,
         turfLocation,
-        ownerType,
+        ownerType:ownerType as TurfOwnerType,
         organizationName:
           ownerType === "ORGANIZATION" ? organizationName : null,
         registrationNumber:
@@ -108,7 +109,7 @@ export async function updateDetails(
   res: Response,
 ): Promise<void> {
   try {
-    const turfOwnerId = req.turfOwner;
+    const turfOwnerId = req.turfOwner.id;
     const profilePhoto =
       req.files && "profilePhoto" in req.files
         ? (req.files["profilePhoto"] as Express.Multer.File[])[0].path
@@ -125,9 +126,13 @@ export async function updateDetails(
       pricePerPerson,
       totalSeats,
       available,
+      availableSeats,
       availabilitySlots,
     } = req.body;
-    const parsedAvailability = availabilitySchema.parse(availabilitySlots);
+    const parsedAvailability = availabilitySlots ? JSON.parse(availabilitySlots) : [];
+    const parsedAvailable = available === "true";
+
+    const validatedAvailability = availabilitySchema.parse(parsedAvailability);
     let turfGames;
     try {
       turfGames = req.body.turfGames ? JSON.parse(req.body.turfGames) : [];
@@ -156,8 +161,9 @@ export async function updateDetails(
         amenities,
         pricePerPerson: parsedPricePerPerson,
         totalSeats: parsedTotalSeats,
-        available,
-        availabilitySlots: parsedAvailability ? parsedAvailability : [],
+        available:parsedAvailable,
+        availableSeats:parseInt(availableSeats),
+        availabilitySlots: validatedAvailability ? validatedAvailability : [],
         turfPhoto: turfPhotos.length ? turfPhotos : undefined,
       },
     });
