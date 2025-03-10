@@ -8,7 +8,7 @@ import {
   logoutUser,
   changePassword,
   resetPassword,
-  generateResetLink,
+  generateResetLink,bookRental,
   bookTurf,
 } from "../controllers/user.controller.js";
 import { uploadSingle } from "../middlewares/multer.js";
@@ -26,5 +26,6 @@ userRoute.post("/change-password", authenticateUser, changePassword);
 userRoute.post("/logout", logoutUser);
 
 userRoute.post("/bookTurf", authenticateUser, bookTurf);
+userRoute.post("/rent", authenticateUser, bookRental);
 
 export default userRoute;

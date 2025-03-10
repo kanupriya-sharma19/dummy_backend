@@ -26,11 +26,13 @@ model User {
   role                 Role      @default(USER)
   bookings             Booking[]
   reviews              Review[]  @relation("UserReviews")
+   ownedAmenities SportsAmenity[] @relation("UserRentals")
+   amenityBookings      SportsAmenityBooking[] @relation("UserBookings")
 }
 
 model TurfOwner {
   id           String  @id @default(cuid())
-  name         String
+  name         String ?
   email        String  @unique
   password     String
   profilePhoto String?
@@ -60,6 +62,7 @@ model TurfOwner {
   updatedAt          DateTime      @updatedAt
   bookings           Booking[]
   reviews            Review[]      @relation("TurfReviews")
+ownedAmenities SportsAmenity[] @relation("TurfOwnerRentals")
 }
 
 enum TurfOwnerType {
@@ -108,3 +111,57 @@ enum Role {
   USER
   TURFOWNER
 }
+
+model SportsAmenity {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  category     String
+  pricePerHour Float
+  quantity     Int
+  photos       String[]  @default([])
+  isAvailable  Boolean   @default(true)
+
+  ownerType    AmenityOwnerType
+
+  userId       String?  
+  turfOwnerId  String?  
+
+  ownerUser    User?      @relation(fields: [userId], references: [id], name: "UserRentals", map: "SportsAmenity_User_fkey")
+  ownerTurf    TurfOwner? @relation(fields: [turfOwnerId], references: [id], name: "TurfOwnerRentals", map: "SportsAmenity_TurfOwner_fkey")
+
+  bookings     SportsAmenityBooking[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model SportsAmenityBooking {
+  id         String             @id @default(cuid())
+  userId     String
+  amenityId  String
+  bookedFrom DateTime
+  bookedTo   DateTime
+  quantity   Int
+  totalPrice Float
+  status     BookingStatus      @default(PENDING)
+
+  user       User               @relation(fields: [userId], references: [id], name: "UserBookings") 
+  amenity    SportsAmenity      @relation(fields: [amenityId], references: [id])
+
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+}
+
+enum AmenityOwnerType {
+  USER
+  TURFOWNER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
