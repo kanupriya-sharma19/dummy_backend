@@ -6,6 +6,8 @@ import {
   updateDetails,
   loginTurfOwner,
   logoutTurfOwner,
+  getAvailableSlots,
+  getBookings,
 } from "../controllers/turfOwner.controller.js";
 
 const turfOwnerRoute = Router();
@@ -19,5 +21,12 @@ turfOwnerRoute.put(
 );
 turfOwnerRoute.post("/login", loginTurfOwner);
 turfOwnerRoute.post("/logout", logoutTurfOwner);
+turfOwnerRoute.get(
+  "/getAvailableSlots",
+  authenticateTurfOwner,
+  getAvailableSlots,
+);
+
+turfOwnerRoute.get("/bookings", authenticateTurfOwner, getBookings);
 
 export default turfOwnerRoute;

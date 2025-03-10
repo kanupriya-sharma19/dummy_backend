@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { z } from "zod";
+import { any, z } from "zod";
 
 const prisma = new PrismaClient();
 
@@ -24,7 +24,6 @@ export async function signupTurfOwner(
   res: Response,
 ): Promise<void> {
   try {
-    
     const {
       name,
       email,
@@ -38,7 +37,7 @@ export async function signupTurfOwner(
       contactPersonName,
       contactPersonPhone,
     } = req.body;
-  
+
     if (!Object.values(TurfOwnerType).includes(ownerType)) {
       res.status(400).json({
         status: false,
@@ -66,7 +65,7 @@ export async function signupTurfOwner(
         phoneNumber,
         turfName,
         turfLocation,
-        ownerType:ownerType as TurfOwnerType,
+        ownerType: ownerType as TurfOwnerType,
         organizationName:
           ownerType === "ORGANIZATION" ? organizationName : null,
         registrationNumber:
@@ -129,7 +128,9 @@ export async function updateDetails(
       availableSeats,
       availabilitySlots,
     } = req.body;
-    const parsedAvailability = availabilitySlots ? JSON.parse(availabilitySlots) : [];
+    const parsedAvailability = availabilitySlots
+      ? JSON.parse(availabilitySlots)
+      : [];
     const parsedAvailable = available === "true";
 
     const validatedAvailability = availabilitySchema.parse(parsedAvailability);
@@ -161,8 +162,8 @@ export async function updateDetails(
         amenities,
         pricePerPerson: parsedPricePerPerson,
         totalSeats: parsedTotalSeats,
-        available:parsedAvailable,
-        availableSeats:parseInt(availableSeats),
+        available: parsedAvailable,
+        availableSeats: parseInt(availableSeats),
         availabilitySlots: validatedAvailability ? validatedAvailability : [],
         turfPhoto: turfPhotos.length ? turfPhotos : undefined,
       },
@@ -228,7 +229,10 @@ export async function loginTurfOwner(
   }
 }
 
-export async function logoutTurfOwner(req: Request, res: Response) {
+export async function logoutTurfOwner(
+  req: Request,
+  res: Response,
+): Promise<any> {
   try {
     const isLocal = process.env.NODE_ENV !== "production";
     res.clearCookie("token", {
@@ -242,5 +246,67 @@ export async function logoutTurfOwner(req: Request, res: Response) {
     res
       .status(500)
       .json({ status: false, message: error.message || "Server error" });
+  }
+}
+
+export async function getAvailableSlots(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const turf = await prisma.turfOwner.findUnique({
+      where: { id: req.turfOwner.id },
+    });
+    if (!turf) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Turf not found. Please login first" });
+    }
+    const bookings = turf.availabilitySlots;
+    return res.status(200).json({
+      status: true,
+      message: "Bookings successfully retrieved",
+      bookings,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}
+
+export async function getBookings(req: Request, res: Response): Promise<any> {
+  try {
+    const turf = await prisma.turfOwner.findUnique({
+      where: { id: req.turfOwner.id },
+      include: { bookings: true },
+    });
+    if (!turf) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Turf not found. Please login first" });
+    }
+    const now = new Date();
+    const pastBookings = turf.bookings
+      .filter((b) => new Date(b.bookedTo) < now)
+      .sort(
+        (a, b) =>
+          new Date(b.bookedTo).getTime() - new Date(a.bookedTo).getTime(),
+      );
+    const upcomingBookings = turf.bookings
+      .filter((b) => new Date(b.bookedFrom) >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.bookedFrom).getTime() - new Date(b.bookedFrom).getTime(),
+      );
+    return res.status(200).json({
+      status: true,
+      pastBookings,
+      upcomingBookings,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
   }
 }

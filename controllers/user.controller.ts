@@ -422,9 +422,10 @@ export async function bookTurf(req: Request, res: Response): Promise<any> {
   }
 }
 
-
-
-export const bookRental = async (req: Request, res: Response): Promise<void> => {
+export const bookRental = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
   try {
     const { amenityId, bookedFrom, bookedTo, quantity } = req.body;
 
@@ -441,7 +442,9 @@ export const bookRental = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    const amenity = await prisma.sportsAmenity.findUnique({ where: { id: amenityId } });
+    const amenity = await prisma.sportsAmenity.findUnique({
+      where: { id: amenityId },
+    });
 
     if (!amenity) {
       res.status(404).json({ error: "Amenity not found." });
@@ -473,3 +476,142 @@ export const bookRental = async (req: Request, res: Response): Promise<void> => 
     res.status(500).json({ error: "Failed to book rental", details: error });
   }
 };
+
+export async function getBookings(req: Request, res: Response): Promise<any> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { bookings: true },
+    });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found. Please Login first" });
+    }
+    const now = new Date();
+    const pastBookings = user.bookings
+      .filter((b) => new Date(b.bookedTo) < now)
+      .sort(
+        (a, b) =>
+          new Date(b.bookedTo).getTime() - new Date(a.bookedTo).getTime(),
+      );
+    const upcomingBookings = user.bookings
+      .filter((b) => new Date(b.bookedFrom) >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.bookedFrom).getTime() - new Date(b.bookedFrom).getTime(),
+      );
+    return res.status(200).json({
+      status: true,
+      pastBookings,
+      upcomingBookings,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}
+
+export async function getUserProfile(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        dob: true,
+        gender: true,
+        city: true,
+        profilePhoto: true,
+        gamePreferences: true,
+        bookings: {
+          select: { id: true, bookedFrom: true, bookedTo: true, status: true },
+        },
+        amenityBookings: {
+          select: {
+            id: true,
+            bookedFrom: true,
+            bookedTo: true,
+            status: true,
+            amenity: { select: { name: true } }, // Amenity details
+          },
+        },
+        ownedAmenities: {
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            pricePerHour: true,
+            description: true,
+            category: true,
+            isAvailable: true,
+            photos: true,
+          },
+        },
+        reviews: {
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        },
+      },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found. Please login first" });
+    }
+    return res
+      .status(200)
+      .json({
+        status: true,
+        message: "USer profile retrieved successfully",
+        user,
+      });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}
+
+export async function getOtherUserProfile(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found. Please login first" });
+    }
+    const userToGetId = req.params.userId;
+    const userToGet = await prisma.user.findUnique({
+      where: { id: userToGetId },
+      select: {
+        name: true,
+        dob: true,
+        gender: true,
+        city: true,
+        gamePreferences: true,
+        profilePhoto: true,
+        bookings: { select: { id: true } },
+        amenityBookings: { select: { id: true } },
+        reviews: { select: { rating: true } },
+      },
+    });
+    return res.status(200).json({
+      status: true,
+      message: "Other User successfully retrieved",
+      userToGet,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}

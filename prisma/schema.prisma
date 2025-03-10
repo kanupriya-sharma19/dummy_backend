@@ -9,30 +9,30 @@ datasource db {
 }
 
 model User {
-  id                   String    @id @default(cuid())
+  id                   String                 @id @default(cuid())
   name                 String
-  email                String    @unique
+  email                String                 @unique
   password             String
   dob                  DateTime?
   gender               String?
   city                 String?
   gamePreferences      String[]
   profilePhoto         String?
-  resetToken           String?   @unique
+  resetToken           String?                @unique
   resetTokenExpiration DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  phoneNumber          String    @default("N/A")
-  role                 Role      @default(USER)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  phoneNumber          String                 @default("N/A")
+  role                 Role                   @default(USER)
   bookings             Booking[]
-  reviews              Review[]  @relation("UserReviews")
-   ownedAmenities SportsAmenity[] @relation("UserRentals")
-   amenityBookings      SportsAmenityBooking[] @relation("UserBookings")
+  reviews              Review[]               @relation("UserReviews")
+  ownedAmenities       SportsAmenity[]        @relation("UserRentals")
+  amenityBookings      SportsAmenityBooking[] @relation("UserBookings")
 }
 
 model TurfOwner {
   id           String  @id @default(cuid())
-  name         String ?
+  name         String?
   email        String  @unique
   password     String
   profilePhoto String?
@@ -58,11 +58,11 @@ model TurfOwner {
   registrationNumber String? // Required if ownerType = ORGANIZATION
   contactPersonName  String? // Required if ownerType = ORGANIZATION
   contactPersonPhone String? // Required if ownerType = ORGANIZATION
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
   bookings           Booking[]
-  reviews            Review[]      @relation("TurfReviews")
-ownedAmenities SportsAmenity[] @relation("TurfOwnerRentals")
+  reviews            Review[]        @relation("TurfReviews")
+  ownedAmenities     SportsAmenity[] @relation("TurfOwnerRentals")
 }
 
 enum TurfOwnerType {
@@ -119,38 +119,38 @@ model SportsAmenity {
   category     String
   pricePerHour Float
   quantity     Int
-  photos       String[]  @default([])
-  isAvailable  Boolean   @default(true)
+  photos       String[] @default([])
+  isAvailable  Boolean  @default(true)
 
-  ownerType    AmenityOwnerType
+  ownerType AmenityOwnerType
 
-  userId       String?  
-  turfOwnerId  String?  
+  userId      String?
+  turfOwnerId String?
 
-  ownerUser    User?      @relation(fields: [userId], references: [id], name: "UserRentals", map: "SportsAmenity_User_fkey")
-  ownerTurf    TurfOwner? @relation(fields: [turfOwnerId], references: [id], name: "TurfOwnerRentals", map: "SportsAmenity_TurfOwner_fkey")
+  ownerUser User?      @relation(fields: [userId], references: [id], name: "UserRentals", map: "SportsAmenity_User_fkey")
+  ownerTurf TurfOwner? @relation(fields: [turfOwnerId], references: [id], name: "TurfOwnerRentals", map: "SportsAmenity_TurfOwner_fkey")
 
-  bookings     SportsAmenityBooking[]
+  bookings SportsAmenityBooking[]
 
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model SportsAmenityBooking {
-  id         String             @id @default(cuid())
+  id         String        @id @default(cuid())
   userId     String
   amenityId  String
   bookedFrom DateTime
   bookedTo   DateTime
   quantity   Int
   totalPrice Float
-  status     BookingStatus      @default(PENDING)
+  status     BookingStatus @default(PENDING)
 
-  user       User               @relation(fields: [userId], references: [id], name: "UserBookings") 
-  amenity    SportsAmenity      @relation(fields: [amenityId], references: [id])
+  user    User          @relation(fields: [userId], references: [id], name: "UserBookings")
+  amenity SportsAmenity @relation(fields: [amenityId], references: [id])
 
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum AmenityOwnerType {
@@ -164,4 +164,3 @@ enum BookingStatus {
   CANCELLED
   COMPLETED
 }
-
