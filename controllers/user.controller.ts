@@ -331,7 +331,11 @@ export async function bookTurf(req: Request, res: Response): Promise<any> {
 
     const dayAvailability = availabilitySlots[dayAvailabilityIndex];
     const slotAvailability = dayAvailability.slots.some((slot: any) => {
-      return !(bookedFromTime >= slot.end || bookedToTime <= slot.start);
+      return (
+        bookedFromTime >= slot.start &&
+        bookedToTime <= slot.end &&
+        slot.availableSeats >= numberOfSeats
+      );
     });
     if (!slotAvailability) {
       return res.status(400).json({
@@ -346,16 +350,20 @@ export async function bookTurf(req: Request, res: Response): Promise<any> {
         .json({ status: false, message: "Not enough seats available" });
     }
 
-    dayAvailability.slots = dayAvailability.slots.filter(
-      (slot: any) =>
-        !(slot.start === bookedFromTime && slot.end === bookedToTime),
-    );
+    dayAvailability.slots = dayAvailability.slots
+      .map((slot: any) => {
+        if (slot.start === bookedFromTime && slot.end === bookedToTime) {
+          return {
+            ...slot,
+            availableSeats: slot.availableSeats - numberOfSeats,
+          };
+        }
+        return slot;
+      })
+      .filter((slot: any) => slot.availableSeats > 0);
 
-    availabilitySlots = availabilitySlots.filter(
-      (slot: any) => slot.slots.length > 0,
-    );
+    const selectedDate = new Date();
 
-    const selectedDate = new Date(); // Default to today's date
     const dayOfWeek = [
       "Sunday",
       "Monday",

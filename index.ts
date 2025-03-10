@@ -5,7 +5,7 @@ import userRoute from "./routes/user.route.js";
 import turfOwnerRoute from "./routes/turfOwner.route.js";
 import reviewRouter from "./routes/reviews.route.js"
 import morgan from "morgan";
-import { PrismaClient } from "@prisma/client";
+~import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 dotenv.config();
