@@ -29,8 +29,7 @@ export const signupUser = async (
   next: NextFunction,
 ): Promise<any> => {
   try {
-    const { name, email, password, dob, gender, city, gamePreferences } =
-      req.body;
+    const { name, email, password, dob, gender, city } = req.body;
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser)
       return res
@@ -38,6 +37,18 @@ export const signupUser = async (
         .json({ status: false, message: "User already exists" });
     const profilePhoto = req.file ? (req.file as any).path : null;
     const hashedPassword = await bcrypt.hash(password, 10);
+    let gamePreferences;
+    try {
+      gamePreferences = req.body.gamePreferences
+        ? JSON.parse(req.body.gamePreferences)
+        : [];
+    } catch {
+      gamePreferences = [];
+    }
+
+    gamePreferences = Array.isArray(gamePreferences)
+      ? gamePreferences
+      : [gamePreferences];
     const user = await prisma.user.create({
       data: {
         name,
@@ -46,7 +57,6 @@ export const signupUser = async (
         dob: dob ? new Date(dob) : null,
         gender,
         city,
-        gamePreferences,
         profilePhoto,
       } as Prisma.UserUncheckedCreateInput,
     });
@@ -111,19 +121,31 @@ export async function loginUser(
   }
 }
 
-export async function updateProfile(req: Request, res: Response) {
+export async function updateProfile(req: Request, res: Response): Promise<any> {
   try {
-    const { dob, gender, city, gamePreferences } = req.body;
-    const profilePhoto = req.file ? (req.file as any).path : null;
+    const { dob, gender, city, phoneNumber } = req.body;
+    let gamePreferences = [];
 
+    try {
+      gamePreferences = req.body.gamePreferences
+        ? JSON.parse(req.body.gamePreferences)
+        : [];
+    } catch {
+      gamePreferences = [];
+    }
+    const profilePhoto =
+      req.files && (req.files as any)["profilePhoto"]
+        ? (req.files as any)["profilePhoto"][0].path
+        : undefined;
     const updatedUser = await prisma.user.update({
       where: { id: req.user },
       data: {
         dob: dob ? new Date(dob) : undefined,
         gender,
         city,
-        gamePreferences: gamePreferences || undefined,
-        profilePhoto,
+        phoneNumber,
+        gamePreferences,
+        ...(profilePhoto && { profilePhoto }),
       },
     });
 
@@ -133,7 +155,6 @@ export async function updateProfile(req: Request, res: Response) {
       data: updatedUser,
     });
   } catch (error: any) {
-    console.error("Error updating profile:", error);
     res
       .status(500)
       .json({ status: false, message: error.message || "Server error" });
@@ -182,15 +203,10 @@ export async function generateResetLink(
 export async function resetPassword(req: Request, res: Response): Promise<any> {
   const { token, newPassword } = req.body;
 
-  // Debug log for received token
-  console.log("Received token:", token);
-
-  // Find user by reset token
   const user = await prisma.user.findUnique({
     where: { resetToken: token },
   });
 
-  // Log user data to see what is returned
   console.log("User found:", user);
 
   if (!user) {
@@ -199,7 +215,6 @@ export async function resetPassword(req: Request, res: Response): Promise<any> {
       .json({ status: false, message: "Invalid or expired token" });
   }
 
-  // Check if token has expired
   const isTokenExpired =
     user.resetTokenExpiration && user.resetTokenExpiration < new Date();
   if (isTokenExpired) {
@@ -208,10 +223,7 @@ export async function resetPassword(req: Request, res: Response): Promise<any> {
       .json({ status: false, message: "Token has expired" });
   }
 
-  // Hash the new password
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-  // Update the password and clear the reset token fields
   await prisma.user.update({
     where: { resetToken: token },
     data: {
@@ -248,32 +260,358 @@ export async function changePassword(
   res: Response,
 ): Promise<any> {
   try {
+    if (!req.user) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: No user ID found" });
+    }
+
     const { oldPassword, newPassword } = req.body;
-    const userId = req.user.id;
+    const userId = req.user as string;
+
     const user = await prisma.user.findUnique({ where: { id: userId } });
+
     if (!user) {
       return res.status(404).json({ status: false, message: "User not found" });
     }
+
     const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
     if (!isOldPasswordValid) {
       return res
         .status(400)
         .json({ status: false, message: "Incorrect old password" });
     }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
     });
+
     return res
       .status(200)
       .json({ status: true, message: "Password changed successfully" });
   } catch (err: any) {
-    console.error("Error changing password ", err);
+    console.error("Error changing password:", err);
     res.status(500).json({
       status: false,
       message: "Internal Server Error",
       error: err.message,
     });
+  }
+}
+
+export async function bookTurf(req: Request, res: Response): Promise<any> {
+  try {
+    const userId = req.user.id;
+    const { turfId, numberOfSeats, bookedFrom, bookedTo, day } = req.body;
+    const bookedFromTime = bookedFrom.split("T")[1]?.substring(0, 5); // Extract "HH:MM"
+    const bookedToTime = bookedTo.split("T")[1]?.substring(0, 5); // Extract "HH:MM"
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+    const turf = await prisma.turfOwner.findUnique({ where: { id: turfId } });
+    if (!turf) {
+      return res.status(404).json({ status: false, message: "Turf not found" });
+    }
+
+    let availabilitySlots = (turf.availabilitySlots as any[]) || [];
+    const dayAvailabilityIndex = availabilitySlots.findIndex(
+      (slot: any) => slot.day === day,
+    );
+    if (dayAvailabilityIndex === -1) {
+      return res.status(400).json({
+        status: "false",
+        message: "Turf at this day is not available",
+      });
+    }
+
+    const dayAvailability = availabilitySlots[dayAvailabilityIndex];
+    const slotAvailability = dayAvailability.slots.some((slot: any) => {
+      return (
+        bookedFromTime >= slot.start &&
+        bookedToTime <= slot.end &&
+        slot.availableSeats >= numberOfSeats
+      );
+    });
+    if (!slotAvailability) {
+      return res.status(400).json({
+        status: "false",
+        message: "Turf at this slot is not available",
+      });
+    }
+
+    if (turf.availableSeats < numberOfSeats) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Not enough seats available" });
+    }
+
+    dayAvailability.slots = dayAvailability.slots
+      .map((slot: any) => {
+        if (slot.start === bookedFromTime && slot.end === bookedToTime) {
+          return {
+            ...slot,
+            availableSeats: slot.availableSeats - numberOfSeats,
+          };
+        }
+        return slot;
+      })
+      .filter((slot: any) => slot.availableSeats > 0);
+
+    const selectedDate = new Date();
+
+    const dayOfWeek = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const targetDayIndex = dayOfWeek.indexOf(day);
+    const todayIndex = selectedDate.getDay();
+    const daysToAdd =
+      targetDayIndex >= todayIndex
+        ? targetDayIndex - todayIndex
+        : 7 - todayIndex + targetDayIndex;
+    selectedDate.setDate(selectedDate.getDate() + daysToAdd);
+    const bookedFromDateTime = new Date(
+      `${selectedDate.toISOString().split("T")[0]}T${bookedFrom}:00Z`,
+    );
+    const bookedToDateTime = new Date(
+      `${selectedDate.toISOString().split("T")[0]}T${bookedTo}:00Z`,
+    );
+
+    const booking = await prisma.booking.create({
+      data: {
+        userId,
+        turfId,
+        numberOfSeats: parseInt(numberOfSeats),
+        day,
+        bookedFrom: bookedFromDateTime,
+        bookedTo: bookedToDateTime,
+        status: "PENDING",
+      },
+    });
+
+    await prisma.turfOwner.update({
+      where: { id: turfId },
+      data: {
+        availableSeats: turf.availableSeats - numberOfSeats,
+        availabilitySlots,
+      },
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: "Turf booked successfully",
+      data: booking,
+    });
+  } catch (err: any) {
+    console.error("Error booking turf ", err);
+    res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: err.message,
+    });
+  }
+}
+
+export const bookRental = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { amenityId, bookedFrom, bookedTo, quantity } = req.body;
+
+    if (!req.user?.id) {
+      res.status(401).json({ error: "User authentication required." });
+      return;
+    }
+
+    const fromDate = new Date(bookedFrom);
+    const toDate = new Date(bookedTo);
+
+    if (fromDate >= toDate) {
+      res.status(400).json({ error: "Invalid booking dates." });
+      return;
+    }
+
+    const amenity = await prisma.sportsAmenity.findUnique({
+      where: { id: amenityId },
+    });
+
+    if (!amenity) {
+      res.status(404).json({ error: "Amenity not found." });
+      return;
+    }
+
+    if (quantity > amenity.quantity) {
+      res.status(400).json({ error: "Not enough quantity available." });
+      return;
+    }
+
+    const hours = (toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60);
+    const totalPrice = hours * amenity.pricePerHour * quantity;
+
+    const newBooking = await prisma.sportsAmenityBooking.create({
+      data: {
+        userId: req.user.id,
+        amenityId,
+        bookedFrom: fromDate,
+        bookedTo: toDate,
+        quantity,
+        totalPrice,
+        status: "PENDING",
+      },
+    });
+
+    res.status(201).json(newBooking);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to book rental", details: error });
+  }
+};
+
+export async function getBookings(req: Request, res: Response): Promise<any> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { bookings: true },
+    });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found. Please Login first" });
+    }
+    const now = new Date();
+    const pastBookings = user.bookings
+      .filter((b) => new Date(b.bookedTo) < now)
+      .sort(
+        (a, b) =>
+          new Date(b.bookedTo).getTime() - new Date(a.bookedTo).getTime(),
+      );
+    const upcomingBookings = user.bookings
+      .filter((b) => new Date(b.bookedFrom) >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.bookedFrom).getTime() - new Date(b.bookedFrom).getTime(),
+      );
+    return res.status(200).json({
+      status: true,
+      pastBookings,
+      upcomingBookings,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}
+
+export async function getUserProfile(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        dob: true,
+        gender: true,
+        city: true,
+        profilePhoto: true,
+        gamePreferences: true,
+        bookings: {
+          select: { id: true, bookedFrom: true, bookedTo: true, status: true },
+        },
+        amenityBookings: {
+          select: {
+            id: true,
+            bookedFrom: true,
+            bookedTo: true,
+            status: true,
+            amenity: { select: { name: true } }, // Amenity details
+          },
+        },
+        ownedAmenities: {
+          select: {
+            id: true,
+            name: true,
+            quantity: true,
+            pricePerHour: true,
+            description: true,
+            category: true,
+            isAvailable: true,
+            photos: true,
+          },
+        },
+        reviews: {
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        },
+      },
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found. Please login first" });
+    }
+    return res
+      .status(200)
+      .json({
+        status: true,
+        message: "USer profile retrieved successfully",
+        user,
+      });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}
+
+export async function getOtherUserProfile(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: false, message: "User not found. Please login first" });
+    }
+    const userToGetId = req.params.userId;
+    const userToGet = await prisma.user.findUnique({
+      where: { id: userToGetId },
+      select: {
+        name: true,
+        dob: true,
+        gender: true,
+        city: true,
+        gamePreferences: true,
+        profilePhoto: true,
+        bookings: { select: { id: true } },
+        amenityBookings: { select: { id: true } },
+        reviews: { select: { rating: true } },
+      },
+    });
+    return res.status(200).json({
+      status: true,
+      message: "Other User successfully retrieved",
+      userToGet,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
   }
 }

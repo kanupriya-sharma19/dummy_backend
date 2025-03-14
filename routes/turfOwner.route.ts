@@ -1,11 +1,14 @@
 import { Router } from "express";
-import upload from "../middlewares/multer";
-import { authenticateTurfOwner } from "../middlewares/jwt";
+import { uploadFields } from "../middlewares/multer.js";
+import { authenticateTurfOwner } from "../middlewares/jwt.js";
 import {
   signupTurfOwner,
   updateDetails,
   loginTurfOwner,
-} from "../controllers/turfOwner.controller";
+  logoutTurfOwner,
+  getAvailableSlots,
+  getBookings,
+} from "../controllers/turfOwner.controller.js";
 
 const turfOwnerRoute = Router();
 
@@ -13,12 +16,17 @@ turfOwnerRoute.post("/signup", signupTurfOwner);
 turfOwnerRoute.put(
   "/updateDetails",
   authenticateTurfOwner,
-  upload.fields([
-    { name: "profilePhoto", maxCount: 1 },
-    { name: "turfPhotos", maxCount: 5 },
-  ]),
+  uploadFields,
   updateDetails,
 );
 turfOwnerRoute.post("/login", loginTurfOwner);
+turfOwnerRoute.post("/logout", logoutTurfOwner);
+turfOwnerRoute.get(
+  "/getAvailableSlots",
+  authenticateTurfOwner,
+  getAvailableSlots,
+);
+
+turfOwnerRoute.get("/bookings", authenticateTurfOwner, getBookings);
 
 export default turfOwnerRoute;

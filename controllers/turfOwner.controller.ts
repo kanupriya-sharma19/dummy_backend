@@ -1,18 +1,51 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, TurfOwnerType } from "@prisma/client";
 import { PrismaClient } from "@prisma/client";
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { any, z } from "zod";
 
 const prisma = new PrismaClient();
+
+const availabilitySchema = z.array(
+  z.object({
+    day: z.string(),
+    slots: z.array(
+      z.object({
+        start: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)"),
+        end: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:MM)"),
+      }),
+    ),
+  }),
+);
 
 export async function signupTurfOwner(
   req: Request,
   res: Response,
 ): Promise<void> {
   try {
-    const { name, email, password, phoneNumber, turfName, turfLocation } =
-      req.body;
+    const {
+      name,
+      email,
+      password,
+      phoneNumber,
+      turfName,
+      turfLocation,
+      ownerType,
+      organizationName,
+      registrationNumber,
+      contactPersonName,
+      contactPersonPhone,
+    } = req.body;
+
+    if (!Object.values(TurfOwnerType).includes(ownerType)) {
+      res.status(400).json({
+        status: false,
+        message:
+          "Invalid owner type. Must be either 'INDIVIDUAL' or 'ORGANIZATION'.",
+      });
+      return;
+    }
     const existingTurfOwner = await prisma.turfOwner.findUnique({
       where: { email },
     });
@@ -26,15 +59,23 @@ export async function signupTurfOwner(
     const hashedPassword = await bcrypt.hash(password, 10);
     const turfOwner = await prisma.turfOwner.create({
       data: {
-        name,
+        name: ownerType === "INDIVIDUAL" ? name : null,
         email,
         password: hashedPassword,
         phoneNumber,
         turfName,
         turfLocation,
+        ownerType: ownerType as TurfOwnerType,
+        organizationName:
+          ownerType === "ORGANIZATION" ? organizationName : null,
+        registrationNumber:
+          ownerType === "ORGANIZATION" ? registrationNumber : null,
+        contactPersonName:
+          ownerType === "ORGANIZATION" ? contactPersonName : null,
+        contactPersonPhone:
+          ownerType === "ORGANIZATION" ? contactPersonPhone : null,
       } as Prisma.TurfOwnerCreateInput,
     });
-
     const token = jwt.sign(
       { id: turfOwner.id },
       process.env.JWT_SECRET as string,
@@ -48,7 +89,6 @@ export async function signupTurfOwner(
       sameSite: "strict",
       maxAge: 3600000,
     });
-
     res.status(201).json({
       status: true,
       message: "Turf Owner successfully signed up",
@@ -63,46 +103,72 @@ export async function signupTurfOwner(
     });
   }
 }
-
 export async function updateDetails(
   req: Request,
   res: Response,
 ): Promise<void> {
   try {
-    const turfOwnerId = req.turfOwner;
-    const profilePhoto = req.file ? (req.file as any).path : null;
-    const turfPhotos = req.files
-      ? (req.files as Express.Multer.File[]).map((file) => file.path)
-      : req.file
-        ? [(req.file as Express.Multer.File).path]
+    const turfOwnerId = req.turfOwner.id;
+    const profilePhoto =
+      req.files && "profilePhoto" in req.files
+        ? (req.files["profilePhoto"] as Express.Multer.File[])[0].path
+        : null;
+    const turfPhotos =
+      req.files && "turfPhoto" in req.files
+        ? (req.files["turfPhoto"] as Express.Multer.File[]).map(
+            (file) => file.path,
+          )
         : [];
     const {
       turfDescription,
       turfSize,
-      turfGames,
-      amenities,
       pricePerPerson,
       totalSeats,
       available,
+      availableSeats,
       availabilitySlots,
     } = req.body;
+    const parsedAvailability = availabilitySlots
+      ? JSON.parse(availabilitySlots)
+      : [];
+    const parsedAvailable = available === "true";
+
+    const validatedAvailability = availabilitySchema.parse(parsedAvailability);
+    let turfGames;
+    try {
+      turfGames = req.body.turfGames ? JSON.parse(req.body.turfGames) : [];
+    } catch {
+      turfGames = [];
+    }
+    let amenities;
+    try {
+      amenities = req.body.amenities ? JSON.parse(req.body.amenities) : [];
+    } catch {
+      amenities = [];
+    }
+    turfGames = Array.isArray(turfGames) ? turfGames : [turfGames];
+    amenities = Array.isArray(amenities) ? amenities : [amenities];
+    const parsedPricePerPerson =
+      pricePerPerson !== undefined ? parseFloat(pricePerPerson) : undefined;
+    const parsedTotalSeats =
+      totalSeats !== undefined ? parseInt(totalSeats, 10) : undefined;
     const updatedTurfOwner = await prisma.turfOwner.update({
       where: { id: turfOwnerId },
       data: {
         profilePhoto,
         turfDescription,
         turfSize,
-        turfGames: turfGames ? (turfGames as string[]) : [],
-        amenities: amenities ? (amenities as string[]) : [],
-        pricePerPerson,
-        totalSeats,
-        available,
-        availabilitySlots: availabilitySlots
-          ? (availabilitySlots as Prisma.JsonObject)
-          : {},
+        turfGames,
+        amenities,
+        pricePerPerson: parsedPricePerPerson,
+        totalSeats: parsedTotalSeats,
+        available: parsedAvailable,
+        availableSeats: parseInt(availableSeats),
+        availabilitySlots: validatedAvailability ? validatedAvailability : [],
         turfPhoto: turfPhotos.length ? turfPhotos : undefined,
       },
     });
+
     res.status(201).json({
       status: true,
       message: "Turf Owner updated successfully",
@@ -160,5 +226,87 @@ export async function loginTurfOwner(
       message: "Internal Server Error",
       error: err.message,
     });
+  }
+}
+
+export async function logoutTurfOwner(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const isLocal = process.env.NODE_ENV !== "production";
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: !isLocal,
+      sameSite: "strict",
+    });
+
+    res.status(200).json({ status: true, message: "Logout successful" });
+  } catch (error: any) {
+    res
+      .status(500)
+      .json({ status: false, message: error.message || "Server error" });
+  }
+}
+
+export async function getAvailableSlots(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    const turf = await prisma.turfOwner.findUnique({
+      where: { id: req.turfOwner.id },
+    });
+    if (!turf) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Turf not found. Please login first" });
+    }
+    const bookings = turf.availabilitySlots;
+    return res.status(200).json({
+      status: true,
+      message: "Bookings successfully retrieved",
+      bookings,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}
+
+export async function getBookings(req: Request, res: Response): Promise<any> {
+  try {
+    const turf = await prisma.turfOwner.findUnique({
+      where: { id: req.turfOwner.id },
+      include: { bookings: true },
+    });
+    if (!turf) {
+      return res
+        .status(404)
+        .json({ status: false, message: "Turf not found. Please login first" });
+    }
+    const now = new Date();
+    const pastBookings = turf.bookings
+      .filter((b) => new Date(b.bookedTo) < now)
+      .sort(
+        (a, b) =>
+          new Date(b.bookedTo).getTime() - new Date(a.bookedTo).getTime(),
+      );
+    const upcomingBookings = turf.bookings
+      .filter((b) => new Date(b.bookedFrom) >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.bookedFrom).getTime() - new Date(b.bookedFrom).getTime(),
+      );
+    return res.status(200).json({
+      status: true,
+      pastBookings,
+      upcomingBookings,
+    });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
   }
 }
