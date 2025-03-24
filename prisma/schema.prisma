@@ -46,6 +46,7 @@ model TurfOwner {
   turfGames       String[]
   amenities       String[]
   ratings         Float    @default(0.0)
+  countReviews         Int    @default(0)
   pricePerPerson  Float?
 
   totalSeats        Int?

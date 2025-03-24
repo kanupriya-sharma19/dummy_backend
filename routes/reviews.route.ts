@@ -9,10 +9,10 @@ import {
 import { authenticateUser } from "../middlewares/jwt.js";
 const reviewRouter = Router();
 
-reviewRouter.post("/", authenticateUser, createReview);
+
 reviewRouter.get("/turf/:turfId", getTurfReviews);
 reviewRouter.get("/user", authenticateUser, getUserReviews);
 reviewRouter.put("/:id", authenticateUser, updateReview);
 reviewRouter.delete("/:id", authenticateUser, deleteReview);
-
+reviewRouter.post("/", authenticateUser, createReview);
 export default reviewRouter;

@@ -7,7 +7,7 @@ import {
   loginTurfOwner,
   logoutTurfOwner,
   getAvailableSlots,
-  getBookings,
+  getBookings,getTurfReviews
 } from "../controllers/turfOwner.controller.js";
 
 const turfOwnerRoute = Router();
@@ -28,5 +28,6 @@ turfOwnerRoute.get(
 );
 
 turfOwnerRoute.get("/bookings", authenticateTurfOwner, getBookings);
+turfOwnerRoute.get("/reviews", authenticateTurfOwner, getTurfReviews);
 
 export default turfOwnerRoute;
