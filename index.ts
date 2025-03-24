@@ -3,10 +3,11 @@ import dotenv from "dotenv";
 import cors from "cors";
 import userRoute from "./routes/user.route.js";
 import turfOwnerRoute from "./routes/turfOwner.route.js";
-import reviewRouter from "./routes/reviews.route.js"
+import reviewRouter from "./routes/reviews.route.js";
+import searchRouter from "./routes/searchRoutes.js";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
-import rentalRoute from "./routes/rental.route.js"
+import rentalRoute from "./routes/rental.route.js";
 const prisma = new PrismaClient();
 
 dotenv.config();
@@ -21,23 +22,22 @@ app.use(
   cors({
     origin: "*",
     credentials: true,
-  })
+  }),
 );
 
 app.use("/user", userRoute);
 app.use("/turf", turfOwnerRoute);
 app.use("/review", reviewRouter);
 app.use("/rentals", rentalRoute);
-
+app.use("/api", searchRouter);
 
 app.get("*", (req: Request, res: Response) => {
   res.send("Hello World!");
 });
 
-app.get("/", (req:Request, res:Response) => {
+app.get("/", (req: Request, res: Response) => {
   res.redirect("/user/view");
 });
-
 
 process.on("SIGINT", async () => {
   await prisma.$disconnect();
