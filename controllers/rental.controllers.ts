@@ -63,7 +63,6 @@ export const getAllRentals = async (req: Request, res: Response): Promise<void> 
   }
 };
 
-// ✅ Get rental by ID
 export const getRentalById = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;

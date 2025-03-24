@@ -310,3 +310,18 @@ export async function getBookings(req: Request, res: Response): Promise<any> {
       .json({ status: false, message: err.message || "Server error" });
   }
 }
+
+export const getTurfReviews = async (req: Request, res: Response) => {
+  const { turfId } =  req.turfOwner.id;
+
+  try {
+    const reviews = await prisma.review.findMany({
+      where: { turfId },
+      include: { user: { select: { name: true, profilePhoto: true } } },
+    });
+
+    res.json(reviews);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch reviews" });
+  }
+};

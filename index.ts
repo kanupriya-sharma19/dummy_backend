@@ -39,6 +39,7 @@ app.get("/", (req:Request, res:Response) => {
 });
 
 
+
 process.on("SIGINT", async () => {
   await prisma.$disconnect();
   process.exit(0);

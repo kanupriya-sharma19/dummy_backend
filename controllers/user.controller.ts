@@ -470,6 +470,14 @@ export const bookRental = async (
         status: "PENDING",
       },
     });
+    await prisma.sportsAmenity.update({
+      where: { id: amenityId },
+      data: {
+        quantity: {
+          decrement: quantity, 
+        },
+      },
+    });
 
     res.status(201).json(newBooking);
   } catch (error) {
@@ -518,6 +526,8 @@ export async function getUserProfile(
   res: Response,
 ): Promise<any> {
   try {
+    console.log("User from request:", req.user);
+
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -559,7 +569,7 @@ export async function getUserProfile(
       },
     });
 
-    if (!user) {
+    if (!user) { 
       return res
         .status(404)
         .json({ status: false, message: "User not found. Please login first" });
@@ -568,7 +578,7 @@ export async function getUserProfile(
       .status(200)
       .json({
         status: true,
-        message: "USer profile retrieved successfully",
+        message: "User profile retrieved successfully",
         user,
       });
   } catch (err: any) {
