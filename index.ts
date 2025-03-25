@@ -8,6 +8,9 @@ import searchRouter from "./routes/searchRoutes.js";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
 import rentalRoute from "./routes/rental.route.js";
+import listEndpoints from "express-list-endpoints";
+
+
 const prisma = new PrismaClient();
 
 dotenv.config();
@@ -47,4 +50,7 @@ process.on("SIGINT", async () => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
+// List all endpoints
+console.log(listEndpoints(app));
 export { app };
