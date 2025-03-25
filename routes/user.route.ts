@@ -32,8 +32,6 @@ userRoute.post("/logout", logoutUser);
 userRoute.get("/getOtherUser/:userId", authenticateUser, getOtherUserProfile);
 
 userRoute.get("/profile", authenticateUser, getUserProfile);
-
-
 userRoute.post("/bookTurf", authenticateUser, bookTurf);
 userRoute.get("/getBookings", authenticateUser, getBookings); //Gives both upcoming and past
 

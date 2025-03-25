@@ -38,8 +38,6 @@ app.get("/", (req:Request, res:Response) => {
   res.redirect("/user/view");
 });
 
-
-
 process.on("SIGINT", async () => {
   await prisma.$disconnect();
   process.exit(0);
