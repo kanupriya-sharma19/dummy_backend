@@ -64,6 +64,8 @@ model TurfOwner {
   bookings           Booking[]
   reviews            Review[]        @relation("TurfReviews")
   ownedAmenities     SportsAmenity[] @relation("TurfOwnerRentals")
+
+  @@map("TurfOwner")
 }
 
 enum TurfOwnerType {
