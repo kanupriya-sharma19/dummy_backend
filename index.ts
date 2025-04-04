@@ -5,11 +5,11 @@ import userRoute from "./routes/user.route.js";
 import turfOwnerRoute from "./routes/turfOwner.route.js";
 import reviewRouter from "./routes/reviews.route.js";
 import searchRouter from "./routes/searchRoutes.js";
+import paymentRoutes from "./routes/payment.route.js";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
 import rentalRoute from "./routes/rental.route.js";
 import listEndpoints from "express-list-endpoints";
-
 
 const prisma = new PrismaClient();
 
@@ -33,6 +33,7 @@ app.use("/turf", turfOwnerRoute);
 app.use("/review", reviewRouter);
 app.use("/rentals", rentalRoute);
 app.use("/api", searchRouter);
+app.use("/payment", paymentRoutes);
 
 app.get("*", (req: Request, res: Response) => {
   res.send("Hello World!");
