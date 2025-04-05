@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { razorpay } from "../config/razorpay.js";
 import { PrismaClient } from "@prisma/client";
 import crypto from "crypto";
-import { parse } from "date-fns";
+import { parse, isBefore, isAfter } from "date-fns";
 
 const prisma = new PrismaClient();
 
@@ -12,6 +12,7 @@ export const createOrder = async (
 ): Promise<any> => {
   const { userId, turfId, amount, numberOfSeats, bookedFrom, bookedTo, day } =
     req.body;
+
   try {
     const bookedFromFormatted = parse(
       bookedFrom,
@@ -19,6 +20,74 @@ export const createOrder = async (
       new Date(),
     );
     const bookedToFormatted = parse(bookedTo, "dd-MM-yyyy HH:mm", new Date());
+
+    if (!isBefore(bookedFromFormatted, bookedToFormatted)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid booking time range" });
+    }
+
+    const turf = await prisma.turfOwner.findUnique({
+      where: { id: turfId },
+    });
+
+    if (!turf) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Turf not found" });
+    }
+
+    if (numberOfSeats > turf.availableSeats) {
+      return res.status(400).json({
+        success: false,
+        message: `Only ${turf.availableSeats} seats are available`,
+      });
+    }
+
+    const expectedAmount =
+      Math.round((turf.pricePerPerson ?? 0) * numberOfSeats * 100) / 100;
+    if (expectedAmount !== amount) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid amount. Expected ${expectedAmount}`,
+      });
+    }
+
+    if (turf.availabilitySlots) {
+      const slotsData: {
+        day: string;
+        slots: { start: string; end: string }[];
+      }[] = JSON.parse(turf.availabilitySlots as unknown as string);
+
+      const matchingDay = slotsData.find(
+        (slotDay) => slotDay.day.toLowerCase() === day.toLowerCase(),
+      );
+
+      if (!matchingDay) {
+        return res.status(400).json({
+          success: false,
+          message: `No slots available on ${day}`,
+        });
+      }
+
+      const isValidSlot = matchingDay.slots.some((slot) => {
+        const slotStart = parse(slot.start, "HH:mm", bookedFromFormatted);
+        const slotEnd = parse(slot.end, "HH:mm", bookedToFormatted);
+
+        return (
+          !isBefore(bookedFromFormatted, slotStart) &&
+          !isAfter(bookedToFormatted, slotEnd)
+        );
+      });
+
+      if (!isValidSlot) {
+        return res.status(400).json({
+          success: false,
+          message: "Selected time is not within available slots",
+        });
+      }
+    }
+
     const booking = await prisma.booking.create({
       data: {
         userId,
@@ -29,6 +98,7 @@ export const createOrder = async (
         day,
       },
     });
+
     const order = await razorpay.orders.create({
       amount: amount * 100,
       currency: "INR",
@@ -38,6 +108,7 @@ export const createOrder = async (
         turfId,
       },
     });
+
     res.json({
       success: true,
       orderId: order.id,
