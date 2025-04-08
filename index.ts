@@ -5,7 +5,7 @@ import userRoute from "./routes/user.route.js";
 import turfOwnerRoute from "./routes/turfOwner.route.js";
 import reviewRouter from "./routes/reviews.route.js";
 import searchRouter from "./routes/searchRoutes.js";
-// import paymentRoutes from "./routes/payment.route.js";
+import paymentRoutes from "./routes/payment.route.js";
 import morgan from "morgan";
 import { PrismaClient } from "@prisma/client";
 import rentalRoute from "./routes/rental.route.js";
@@ -33,7 +33,7 @@ app.use("/turf", turfOwnerRoute);
 app.use("/review", reviewRouter);
 app.use("/rentals", rentalRoute);
 app.use("/api", searchRouter);
-// app.use("/payment", paymentRoutes);
+app.use("/payment", paymentRoutes);
 
 app.get("*", (req: Request, res: Response) => {
   res.send("Hello World!");
@@ -53,5 +53,5 @@ app.listen(port, () => {
 });
 
 // List all endpoints
-// console.log(listEndpoints(app));
+console.log(listEndpoints(app));
 export { app };
