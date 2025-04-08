@@ -7,7 +7,7 @@ import {
   loginTurfOwner,
   logoutTurfOwner,
   getAvailableSlots,
-  getBookings,getTurfReviews
+  getBookings,getTurfReviews,resetPassword,generateResetLink,changePassword,getAllTurfOwners
 } from "../controllers/turfOwner.controller.js";
 
 const turfOwnerRoute = Router();
@@ -21,6 +21,7 @@ turfOwnerRoute.put(
 );
 turfOwnerRoute.post("/login", loginTurfOwner);
 turfOwnerRoute.post("/logout", logoutTurfOwner);
+turfOwnerRoute.get("/all_turfs", getAllTurfOwners);
 turfOwnerRoute.get(
   "/getAvailableSlots",
   authenticateTurfOwner,
@@ -29,5 +30,7 @@ turfOwnerRoute.get(
 
 turfOwnerRoute.get("/bookings", authenticateTurfOwner, getBookings);
 turfOwnerRoute.get("/reviews", authenticateTurfOwner, getTurfReviews);
-
+turfOwnerRoute.post("/reset-password", resetPassword);
+turfOwnerRoute.post("/resetLink", generateResetLink);
+turfOwnerRoute.post("/change-password", authenticateTurfOwner, changePassword);
 export default turfOwnerRoute;

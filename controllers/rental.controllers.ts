@@ -56,7 +56,15 @@ export const createRental = async (req: Request, res: Response): Promise<void> =
 
 export const getAllRentals = async (req: Request, res: Response): Promise<void> => {
   try {
-    const rentals = await prisma.sportsAmenity.findMany();
+    const rentals = await prisma.sportsAmenity.findMany({
+      where: {
+        isAvailable: true,
+      },
+
+      orderBy: {
+              name: 'asc',
+            },
+          });
     res.status(200).json(rentals);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch rentals", details: error });

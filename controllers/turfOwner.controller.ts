@@ -4,6 +4,8 @@ import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { any, z } from "zod";
+import nodemailer from "nodemailer";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -103,6 +105,26 @@ export async function signupTurfOwner(
     });
   }
 }
+
+export async function getAllTurfOwners(req: Request, res: Response): Promise<any> {
+  try {
+    const turfOwners = await prisma.turfOwner.findMany({
+      where: {
+        available: true,
+      },
+orderBy: {
+        turfName: 'asc',
+      },
+    });
+
+    res.status(200).json(turfOwners);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching turf owners", error: err });
+  }
+}
+
+
+
 export async function updateDetails(
   req: Request,
   res: Response,
@@ -325,3 +347,133 @@ export const getTurfReviews = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch reviews" });
   }
 };
+
+
+export async function generateResetLink(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  const { email } = req.body;
+  const turfOwner = await prisma.turfOwner.findUnique({ where: { email } });
+  if (!turfOwner) {
+    return res.status(404).json({ status: false, message: "User not found" });
+  }
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  await prisma.turfOwner.update({
+    where: { email },
+    data: { resetToken, resetTokenExpiration: new Date(Date.now() + 3600000) }, // 1 hour expiration
+  });
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  const resetLink = `${process.env.TURF_URL}/reset-password?token=${resetToken}`;
+  console.log(resetLink);
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: "Password Reset Request",
+    text: `Click on the link to reset your password: ${resetLink}`,
+  };
+  try {
+    await transporter.sendMail(mailOptions);
+    res
+      .status(200)
+      .json({ status: true, message: "Password reset email sent" });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ status: false, message: "Error sending email" });
+  }
+}
+
+export async function resetPassword(req: Request, res: Response): Promise<any> {
+  const { newPassword } = req.body;
+if (!newPassword) {
+  return res.status(400).json({ message: "New password is required" });
+}
+  const token = req.query.token as string;
+  const user = await prisma.turfOwner.findUnique({
+    where: { resetToken: token },
+  });
+
+  
+
+  if (!user) {
+    return res
+      .status(400)
+      .json({ status: false, message: "Invalid or expired token" });
+  }
+
+  const isTokenExpired =
+    user.resetTokenExpiration && user.resetTokenExpiration < new Date();
+  if (isTokenExpired) {
+    return res
+      .status(400)
+      .json({ status: false, message: "Token has expired" });
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await prisma.turfOwner.update({
+    where: { resetToken: token },
+    data: {
+      password: hashedPassword,
+      resetToken: null,
+      resetTokenExpiration: null,
+    },
+  });
+
+  res
+    .status(200)
+    .json({ status: true, message: "Password updated successfully" });
+}
+
+
+export async function changePassword(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+    if (!req.turfOwner) {
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: No user ID found" });
+    }
+
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.turfOwner.id as string;
+
+    const user = await prisma.turfOwner.findUnique({ where: { id: userId } });
+
+    if (!user) {
+      return res.status(404).json({ status: false, message: "User not found" });
+    }
+
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    if (!isOldPasswordValid) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Incorrect old password" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.turfOwner.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return res
+      .status(200)
+      .json({ status: true, message: "Password changed successfully" });
+  } catch (err: any) {
+    console.error("Error changing password:", err);
+    res.status(500).json({
+      status: false,
+      message: "Internal Server Error",
+      error: err.message,
+    });
+  }
+}
