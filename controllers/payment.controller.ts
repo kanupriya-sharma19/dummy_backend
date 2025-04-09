@@ -10,7 +10,8 @@ export const createOrder = async (
   req: Request,
   res: Response,
 ): Promise<any> => {
-  const { userId, turfId, amount, numberOfSeats, bookedFrom, bookedTo, day } =
+  const userId = req.user.id;
+  const { turfId, amount, numberOfSeats, bookedFrom, bookedTo, day } =
     req.body;
 
   try {
@@ -56,8 +57,13 @@ export const createOrder = async (
     if (turf.availabilitySlots) {
       const slotsData: {
         day: string;
+        date?: string;
         slots: { start: string; end: string }[];
-      }[] = JSON.parse(turf.availabilitySlots as unknown as string);
+      }[] =
+        typeof turf.availabilitySlots === "string"
+          ? JSON.parse(turf.availabilitySlots)
+          : turf.availabilitySlots;
+      
 
       const matchingDay = slotsData.find(
         (slotDay) => slotDay.day.toLowerCase() === day.toLowerCase(),
