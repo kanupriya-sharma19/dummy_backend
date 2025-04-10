@@ -6,7 +6,7 @@ import {
   updateDetails,
   loginTurfOwner,
   logoutTurfOwner,
-  getAvailableSlots,
+  getAvailableSlots,getTurfProfile,
   getBookings,getTurfReviews,resetPassword,generateResetLink,changePassword,getAllTurfOwners
 } from "../controllers/turfOwner.controller.js";
 
@@ -28,6 +28,7 @@ turfOwnerRoute.get(
   getAvailableSlots,
 );
 
+turfOwnerRoute.get("/truf-profile", authenticateTurfOwner, getTurfProfile);
 turfOwnerRoute.get("/bookings", authenticateTurfOwner, getBookings);
 turfOwnerRoute.get("/reviews", authenticateTurfOwner, getTurfReviews);
 turfOwnerRoute.post("/reset-password", resetPassword);

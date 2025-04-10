@@ -488,3 +488,36 @@ export async function changePassword(
     });
   }
 }
+
+
+export async function getTurfProfile(
+  req: Request,
+  res: Response,
+): Promise<any> {
+  try {
+  
+
+    const user = await prisma.turfOwner.findUnique({
+      where: { id: req.turfOwner.id},
+    
+        
+    });
+
+    if (!user) { 
+      return res
+        .status(404)
+        .json({ status: false, message: "Turf not found. Please login first" });
+    }
+    return res
+      .status(200)
+      .json({
+        status: true,
+        message: "Turf profile retrieved successfully",
+        user,
+      });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ status: false, message: err.message || "Server error" });
+  }
+}
