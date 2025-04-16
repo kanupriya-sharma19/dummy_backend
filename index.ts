@@ -8,9 +8,9 @@ dotenv.config();
 const port = process.env.PORT;
 app.use("/user", userRoute);
 app.use(cors());
-app.get('*', (req: Request, res: Response) => {
-  res.send('Hello World!');
-});
+// app.get('*', (req: Request, res: Response) => {
+//   res.send('Hello World!');
+// });
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
