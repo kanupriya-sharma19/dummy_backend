@@ -35,9 +35,9 @@ app.use("/rentals", rentalRoute);
 app.use("/api", searchRouter);
 app.use("/payment", paymentRoutes);
 
-app.get("*", (req: Request, res: Response) => {
-  res.send("Hello World!");
-});
+// app.get("*", (req: Request, res: Response) => {
+//   res.send("Hello World!");
+// });
 
 app.get("/", (req: Request, res: Response) => {
   res.redirect("/user/view");
