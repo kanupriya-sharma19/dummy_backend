@@ -1,6 +1,6 @@
 # Play Pals - Backend
 
-The backend of **Play Pals**, a platform designed to connect users for games, matches, or events based on shared interests and location. This repository contains the RESTful API, authentication logic, and MongoDB-based data handling.
+The backend of **Play Pals**, a platform designed to connect users for games, matches, or events based on shared interests and location. This repository contains the RESTful API, authentication logic, and PostgreSQL-based data handling.
 
 ---
 ## Tech Stack
