@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Prisma, PrismaClient } from "@prisma/client";
 import { parse, isBefore, isAfter } from "date-fns";
-
+import { ParsedQs } from "qs";
 const prisma = new PrismaClient();
 
 interface TurfSearchResult {
@@ -160,6 +160,64 @@ export const searchRentals = async (req: Request, res: Response): Promise<any> =
   }
 };
 
+export const filterTurfSlots = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const { day, date, startSlot, endSlot, limit = 10, offset = 0 } = req.query;
+
+    const dayString = typeof day === "string" ? day : ""; 
+    const dateString = typeof date === "string" ? date : "";  
+    const startSlotString = typeof startSlot === "string" ? startSlot : "";  
+    const endSlotString = typeof endSlot === "string" ? endSlot : "";  
+
+    let conditions = ['"available" = true'];
+
+    if (dayString) {
+      conditions.push(`"availabilitySlots"::jsonb @> '[{"day": "${dayString}"}]'`);
+    }
+
+    if (dateString) {
+      conditions.push(`"availabilitySlots"::jsonb @> '[{"date": "${dateString}"}]'`);
+    }
+
+    if (startSlotString && endSlotString) {
+      conditions.push(`"availabilitySlots"::jsonb @> '[{"slots": [{"start": "${startSlotString}", "end": "${endSlotString}"}]}]'`);
+    }
+
+    const queryConditions = conditions.join(" AND ");
+
+    type TurfOwnerResult = {
+      turfName: string;
+      availabilitySlots: any;  
+      turfLocation: string;
+    };
+
+    const limitNum = Number(limit);  
+    const offsetNum = Number(offset);  
+
+    const results: TurfOwnerResult[] = await prisma.$queryRaw`
+      SELECT "turfName", "availabilitySlots", "turfLocation"
+      FROM "TurfOwner"
+      WHERE ${Prisma.sql([queryConditions])}
+      LIMIT ${limitNum} OFFSET ${offsetNum}
+    `;
+
+    const totalResult = await prisma.$queryRaw<{ count: string }[]>`
+      SELECT COUNT(*) AS count
+      FROM "TurfOwner"
+      WHERE ${Prisma.sql([queryConditions])}
+    `;
+
+    const total = totalResult[0]?.count ? Number(totalResult[0].count) : 0;
+    if (total === 0) {
+      return res.status(404).json({ message: "No matching turf slots found" });
+    }
+
+    res.json({ total, data: results });
+  } catch (error: any) {
+    console.error("Turf Slot Filter Error:", error.message);
+    res.status(500).json({ error: "Turf slot filter failed", details: error.message });
+  }
+};
 
 // type CountResult = { count: string };
 
