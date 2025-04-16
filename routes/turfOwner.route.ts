@@ -28,7 +28,7 @@ turfOwnerRoute.get(
   getAvailableSlots,
 );
 
-turfOwnerRoute.get("/truf-profile", authenticateTurfOwner, getTurfProfile);
+turfOwnerRoute.get("/turf-profile", authenticateTurfOwner, getTurfProfile);
 turfOwnerRoute.get("/bookings", authenticateTurfOwner, getBookings);
 turfOwnerRoute.get("/reviews", authenticateTurfOwner, getTurfReviews);
 turfOwnerRoute.post("/reset-password", resetPassword);

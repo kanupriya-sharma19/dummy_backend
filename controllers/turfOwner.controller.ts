@@ -18,23 +18,20 @@ const availabilitySchema = z.array(
       .optional(),
     slots: z.array(
       z.object({
-        start: z.string().regex(
-          /^([01]\d|2[0-3]):([0-5]\d)$/,
-          "Invalid time format (HH:MM)"
-        ),
-        end: z.string().regex(
-          /^([01]\d|2[0-3]):([0-5]\d)$/,
-          "Invalid time format (HH:MM)"
-        ),
-      }),
+        start: z
+          .string()
+          .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:MM)"),
+        end: z
+          .string()
+          .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format (HH:MM)"),
+      })
     ),
-  }),
+  })
 );
-
 
 export async function signupTurfOwner(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> {
   try {
     const {
@@ -94,7 +91,7 @@ export async function signupTurfOwner(
       process.env.JWT_SECRET as string,
       {
         expiresIn: "1h",
-      },
+      }
     );
     res.cookie("token", token, {
       httpOnly: true,
@@ -117,14 +114,17 @@ export async function signupTurfOwner(
   }
 }
 
-export async function getAllTurfOwners(req: Request, res: Response): Promise<any> {
+export async function getAllTurfOwners(
+  req: Request,
+  res: Response
+): Promise<any> {
   try {
     const turfOwners = await prisma.turfOwner.findMany({
       where: {
         available: true,
       },
-orderBy: {
-        turfName: 'asc',
+      orderBy: {
+        turfName: "asc",
       },
     });
 
@@ -134,11 +134,9 @@ orderBy: {
   }
 }
 
-
-
 export async function updateDetails(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> {
   try {
     const turfOwnerId = req.turfOwner.id;
@@ -149,7 +147,7 @@ export async function updateDetails(
     const turfPhotos =
       req.files && "turfPhoto" in req.files
         ? (req.files["turfPhoto"] as Express.Multer.File[]).map(
-            (file) => file.path,
+            (file) => file.path
           )
         : [];
     const {
@@ -219,7 +217,7 @@ export async function updateDetails(
 
 export async function loginTurfOwner(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<void> {
   try {
     const { email, password } = req.body;
@@ -238,7 +236,7 @@ export async function loginTurfOwner(
       process.env.JWT_SECRET as string,
       {
         expiresIn: "1h",
-      },
+      }
     );
     res.cookie("token", token, {
       httpOnly: true,
@@ -264,7 +262,7 @@ export async function loginTurfOwner(
 
 export async function logoutTurfOwner(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> {
   try {
     const isLocal = process.env.NODE_ENV !== "production";
@@ -284,7 +282,7 @@ export async function logoutTurfOwner(
 
 export async function getAvailableSlots(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> {
   try {
     const turf = await prisma.turfOwner.findUnique({
@@ -324,13 +322,13 @@ export async function getBookings(req: Request, res: Response): Promise<any> {
       .filter((b) => new Date(b.bookedTo) < now)
       .sort(
         (a, b) =>
-          new Date(b.bookedTo).getTime() - new Date(a.bookedTo).getTime(),
+          new Date(b.bookedTo).getTime() - new Date(a.bookedTo).getTime()
       );
     const upcomingBookings = turf.bookings
       .filter((b) => new Date(b.bookedFrom) >= now)
       .sort(
         (a, b) =>
-          new Date(a.bookedFrom).getTime() - new Date(b.bookedFrom).getTime(),
+          new Date(a.bookedFrom).getTime() - new Date(b.bookedFrom).getTime()
       );
     return res.status(200).json({
       status: true,
@@ -345,7 +343,7 @@ export async function getBookings(req: Request, res: Response): Promise<any> {
 }
 
 export const getTurfReviews = async (req: Request, res: Response) => {
-  const { turfId } =  req.turfOwner.id;
+  const { turfId } = req.turfOwner.id;
 
   try {
     const reviews = await prisma.review.findMany({
@@ -359,10 +357,9 @@ export const getTurfReviews = async (req: Request, res: Response) => {
   }
 };
 
-
 export async function generateResetLink(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> {
   const { email } = req.body;
   const turfOwner = await prisma.turfOwner.findUnique({ where: { email } });
@@ -403,15 +400,13 @@ export async function generateResetLink(
 
 export async function resetPassword(req: Request, res: Response): Promise<any> {
   const { newPassword } = req.body;
-if (!newPassword) {
-  return res.status(400).json({ message: "New password is required" });
-}
+  if (!newPassword) {
+    return res.status(400).json({ message: "New password is required" });
+  }
   const token = req.query.token as string;
   const user = await prisma.turfOwner.findUnique({
     where: { resetToken: token },
   });
-
-  
 
   if (!user) {
     return res
@@ -442,10 +437,9 @@ if (!newPassword) {
     .json({ status: true, message: "Password updated successfully" });
 }
 
-
 export async function changePassword(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> {
   try {
     if (!req.turfOwner) {
@@ -489,32 +483,25 @@ export async function changePassword(
   }
 }
 
-
 export async function getTurfProfile(
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> {
   try {
-  
-
     const user = await prisma.turfOwner.findUnique({
-      where: { id: req.turfOwner.id},
-    
-        
+      where: { id: req.turfOwner.id },
     });
 
-    if (!user) { 
+    if (!user) {
       return res
         .status(404)
         .json({ status: false, message: "Turf not found. Please login first" });
     }
-    return res
-      .status(200)
-      .json({
-        status: true,
-        message: "Turf profile retrieved successfully",
-        user,
-      });
+    return res.status(200).json({
+      status: true,
+      message: "Turf profile retrieved successfully",
+      user,
+    });
   } catch (err: any) {
     res
       .status(500)

@@ -1,10 +1,12 @@
+
 import express from "express";
-import { filterTurfsByPrice,filterRentalsByPrice,searchRentals,searchTurfs } from "../controllers/search.controller.js";
+import { searchTurfs, searchRentals, filterRentalsByPrice,filterTurfsByPrice } from "../controllers/search.controller.js"; // Correct import
 
-const router = express.Router();
+const searchRouter = express.Router();
 
-router.get("/search", searchTurfs);
-router.get("/searchRentals", searchRentals);
-router.get("/filter-by-price", filterTurfsByPrice);
-router.get("/Rentalfilter-by-price", filterRentalsByPrice);
-export default router;
+searchRouter.get("/search", searchTurfs);
+searchRouter.get("/Turffilter-by-price", filterTurfsByPrice);
+searchRouter.get("/searchRentals", searchRentals);
+searchRouter.get("/Rentalfilter-by-price", filterRentalsByPrice);
+
+export default searchRouter;
