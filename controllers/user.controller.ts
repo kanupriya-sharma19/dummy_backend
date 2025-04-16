@@ -138,7 +138,7 @@ export async function updateProfile(req: Request, res: Response): Promise<any> {
         ? (req.files as any)["profilePhoto"][0].path
         : undefined;
     const updatedUser = await prisma.user.update({
-      where: { id: req.user },
+      where: { id: req.user.id },
       data: {
         dob: dob ? new Date(dob) : undefined,
         gender,
