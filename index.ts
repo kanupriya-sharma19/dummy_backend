@@ -47,6 +47,10 @@ process.on("SIGINT", async () => {
   await prisma.$disconnect();
   process.exit(0);
 });
+=====
+// app.get('*', (req: Request, res: Response) => {
+//   res.send('Hello World!');
+// });
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
