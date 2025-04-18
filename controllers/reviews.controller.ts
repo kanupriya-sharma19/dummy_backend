@@ -2,53 +2,48 @@ import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-
-export const createReview = async (
-  req: Request,
-  res: Response,
-): Promise<any> => {
+export const createReview = async (req: Request, res: Response): Promise<any> => {
   try {
     const { turfId, rating, comment } = req.body;
-    
     const userId = req.user.id;
-    const userExists = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-    
+
+    if (!userId || !turfId || !rating) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    console.log("Files received:", req.files);
+    // Check if user exists
+    const userExists = await prisma.user.findUnique({ where: { id: userId } });
     if (!userExists) {
       return res.status(404).json({ error: "User not found. Please login again." });
     }
-    
 
-    if (!userId || !turfId || !rating) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
+    // Check if review already exists
     const existingReview = await prisma.review.findFirst({
-      where: {
-        userId,
-        turfId,
-      },
+      where: { userId, turfId },
     });
-
     if (existingReview) {
-      return res.status(400).json({
-        error: "You have already reviewed this turf",
-      });
+      return res.status(400).json({ error: "You have already reviewed this turf" });
     }
 
-    if (!userId || !turfId || !rating) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
+    const photo = req.files && (req.files as any)["photo"]
+  ? (req.files as any)["photo"][0].path
+  : undefined;
+
+
+    // Create review
+    
 
     const review = await prisma.review.create({
       data: {
         userId,
         turfId,
-        rating,
+        rating: Number(rating),
         comment,
+        ...(photo && { photo }),
       },
     });
+
+    // Update turf ratings
     const turf = await prisma.turfOwner.findUnique({
       where: { id: turfId },
       select: { countReviews: true, ratings: true },
@@ -57,7 +52,7 @@ export const createReview = async (
     if (turf) {
       const newReviewCount = turf.countReviews + 1;
       const newAverageRating =
-        (turf.ratings * turf.countReviews + rating) / newReviewCount;
+        (turf.ratings * turf.countReviews + Number(rating)) / newReviewCount;
 
       await prisma.turfOwner.update({
         where: { id: turfId },
@@ -68,12 +63,13 @@ export const createReview = async (
       });
     }
 
-    res.status(201).json({ success: true, review });
-  } catch (error) {
+    return res.status(201).json({ success: true, review });
+  } catch (error: any) {
     console.error("Error creating review:", error);
-    res.status(500).json({ error: "Failed to create review" });
+    return res.status(500).json({ error: "Failed to create review", details: error.message });
   }
 };
+
 export const getTurfReviews = async (req: Request, res: Response) => {
   const { turfId } = req.params;
 

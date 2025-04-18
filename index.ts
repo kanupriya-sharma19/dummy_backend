@@ -52,6 +52,6 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-// List all endpoints
-console.log(listEndpoints(app));
+// // List all endpoints
+// console.log(listEndpoints(app));
 export { app };
